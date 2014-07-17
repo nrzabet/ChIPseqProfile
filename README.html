@@ -1,0 +1,118 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<title>ChIP-seq profile estimation</title>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+<meta http-equiv="expires" content="0" />
+<meta http-equiv="refresh" content="" />
+<meta http-equiv="content-language" content="en" />
+<meta name="author" content="Dana Zabet" />
+<meta name="copyright" content="&copy; copyright 2011 by Dr Nicolae-Radu Zabet. All rights reserved." />
+<meta name="generator" content="Bluefish 2.2.1" />
+<meta name="description" content="" />
+<meta name="keywords" content="Dr Nicolae-Radu Zabet University of Cambridge, Cambridge Systems Biology Centre, Department of Genetics" />
+<meta name="robots" content="all" />
+<meta name="Distribution" content="Global" />
+<!--<link rel="icon" href="favicon.ico" type="image/icon" />-->
+
+<link rel="Start" href="" />
+<link rel="Search" href="" />
+<link rel="First" href="" />
+<link rel="Copyright" href="" />
+<link rel="Author" href="Dana Zabet" />
+<link rel="Help" href="" />
+<link href="" rev="made" />
+<link rel="stylesheet" type="text/css" href="webpage.css" media="screen" />
+<link rel="stylesheet" type="text/css" href="webpage.css" media="print" />
+<link rel="alternate stylesheet" href="webpage.css" type="text/css" media="screen" title="print" />
+</head>
+
+<body>
+<div id="wrapper">
+	<div id="header">	
+	</div>	
+	<div id="page_body">
+
+		
+		<div id="page_body_right">
+			<h1 id="about">Computational estimate of the ChIP-seq profile </h1>
+			
+			
+			<h3 id="about">Abstract </h3>
+
+			<p class="paper">
+				The binding of transcription factors (TFs) is essential for gene expression. One important characteristic is the actual occupancy of a putative binding site in the genome. In this study, we propose an analytical model to predict genomic occupancy that incorporates the preferred target sequence of a TF in the form of a position weight matrix (PWM), DNA accessibility data (in case of eukaryotes), the number of TF molecules expected to be bound to the DNA and a parameter that modulates the specificity of the TF. Given actual occupancy data in form of ChIP-seq profiles, we backwards inferred copy number and specificity for five <i>Drosophila</i> TFs during early embryonic development: Bicoid, Caudal, Giant, Hunchback and Kruppel. Our results suggest that these TFs display a lower number of DNA-bound molecules than previously assumed (in the range of tens and hundreds) and that, while Bicoid and Caudal display a higher specificity, the other three transcription factors (Giant, Hunchback and Kruppel) display lower specificity in their binding (despite having PWMs with higher information content). This study gives further weight to earlier investigations into TF copy numbers that suggest a significant proportion of molecules are not bound to the DNA.
+			</p>
+			
+			<h3 id="about">Systems requirements </h3>
+
+			<p class="paper">To run the scripts, you need to have access to a machine with an installation of <a href="http://www.r-project.org/"> R</a>. To combine multiple ChIP-seq profile plots, the script uses pdflatex command, thus requiring an installation of <a href="http://www.latex-project.org/">latex</a>. If the system does not have all required packages (<span class="code_inline">BSgenome.Dmelanogaster.UCSC.dm3</span> from <a href="http://www.bioconductor.org/">Bioconductor</a> and <span class="code_inline">xtable</span>) you also need internet connection. Finally, you will need a machine with at least <span class="code_inline">40 GB</span> of memory and <span class="code_inline">30 GB</span> of HDD storage space available.</p>
+
+
+
+
+			<h3 id="about">Run the scripts </h3>
+
+			<p class="paper">1. move to the directory. For Linux or MacOS type in the terminal</p>
+			<p class="code"> $ cd ChIPseqProfile</p>
+			
+			<p class="paper">2. start R and then type</p>
+			<p class="code"> $ R</p>
+			<p class="code"> > source("PerformAnalysis.R")</p>
+
+			<p class="paper">3. (optional) to combine multiple ChIP-seq profile plots open the terminal and call</p>
+			<p class="code">$ chmod +x GenerateProfilesPanels.sh</p>
+			<p class="code">$ ./GenerateProfilesPanels.sh</p>
+			<p class="paper">Note that this only works on Linux or MacOS. For Windows systems, please go to the subdirectories listed  bellow in section 5 and call <span class="code_inline">pdflatex</span> for the <span class="code_inline">.tex</span> file in each subdirectory</p>
+
+			<h3 id="about">The output</h3>
+			<p class="paper">1. The heatmaps can be found in subdirectory</p>
+			<p class="code">img/heatmap</p>
+
+			<p class="paper">2. The latex tables with the optimal set of parameters can be found in subdirectory</p>
+			<p class="code">tables</p>
+
+			<p class="paper">3. The ChIP-seq profile estimates can be found in subdirectory</p>
+			<p class="code">img/profile</p>
+			
+			<p class="paper">4. The statistics of the genome wide analysis can be found in subdirectory</p>
+			<p class="code">img/statistics</p>
+			
+			<p class="paper">5. (optional) The plots with multiple profile files can be found in subdirectories</p>
+			<p class="paper">a). the five ChIP-seq profiles at <i>eve</i> locus using the optimal set of parameters</p>
+			<p class="code">latex/eve</p>
+			
+			<p class="paper">b). the Bicoid ChIP-seq profiles at all 21 loci using the optimal set of parameters</p>
+			<p class="code">latex/BCDAccessibleRegions</p>
+			
+			<p class="paper">c). the Caudal ChIP-seq profiles at all 21 loci using the optimal set of parameters </p>
+			<p class="code">latex/CADAccessibleRegions</p>
+
+			<p class="paper">d). the Giant ChIP-seq profiles at all 21 loci using the optimal set of parameters</p>
+			<p class="code">latex/GTAccessibleRegions</p>
+
+			<p class="paper">e). the Hunchback ChIP-seq profiles at all 21 loci using the optimal set of parameters </p>
+			<p class="code">latex/HBAccessibleRegions</p>
+
+			<p class="paper">f). the Kruppel ChIP-seq profiles at all 21 loci using the optimal set of parameters </p>
+			<p class="code">latex/KRAccessibleRegions</p>
+			
+			<p class="paper">g). the Hunchback ChIP-seq profiles at all 21 loci using the optimal set of parameters and <a href="http://jaspar.genereg.net/">JASPAR</a> PWM motif </p>
+			<p class="code">latex/HBAccessibleRegionsJASPAR</p>
+			
+			<p class="paper">h). the Kruppel ChIP-seq profiles at all 21 loci using the optimal set of parameters and <a href="http://jaspar.genereg.net/">JASPAR</a> PWM motif </p>
+			<p class="code">latex/KRAccessibleRegionsJASPAR</p>
+
+			<p class="paper">i). the Bicoid profile at <i>eve</i> locus using different abundances </p>
+			<p class="code">latex/BCDEveStripeEnhancer</p>
+
+			
+			
+		</div>
+	</div>	
+	
+
+</div>
+</body>
+
+</html>
