@@ -1,8 +1,8 @@
 ################################################################################
 # LOAD FUNCTIONS
 ################################################################################
-library(BSgenome.Dmelanogaster.UCSC.dm3);
-library(xtable);
+suppressPackageStartupMessages(library(BSgenome.Dmelanogaster.UCSC.dm3));
+suppressPackageStartupMessages(library(xtable));
 
 source('functions/GenomicGeneralFunctions.R');
 source('functions/GenomicOutputFunctions.R');
@@ -111,14 +111,11 @@ if(loadProfiles){
     maxSignal=vector("list",length(profileFiles));
     names(maxSignal)=names(profileFiles);
     for(i in 1:length(profileFiles)){
-      profileBuffer1=import(profileFiles1[[i]]);
-      backgroundSignal[[i]] = mean(profileBuffer1$score);
-      maxSignal[[i]] = max(profileBuffer1$score);
-      profile[[i]] =  extractOccupancyDataAtLoci(profile=data.frame(as.vector(seqnames(profileBuffer1)),
-                                                                    as.numeric(as.vector(start(ranges(profileBuffer1)))),
-                                                                    as.numeric(as.vector(end(ranges(profileBuffer1)))),
-                                                                    as.numeric(profileBuffer1$score)),
-                                                 setSequence=allSetPositive, maxSignal=maxSignal[[i]], removeBackground=0, chipSmooth=chipSmooth);
+      profile[[i]] = read.table(profileFiles[[i]], skip=2);
+      profile[[i]][,4] = as.numeric(profile[[i]][,4]);
+      backgroundSignal[[i]] = mean(profile[[i]][,4]);
+      maxSignal[[i]] = max(profile[[i]][,4]);
+      profile[[i]] =  extractOccupancyDataAtLoci(profile=profile[[i]], setSequence=allSetPositive, maxSignal=maxSignal[[i]], removeBackground=0, chipSmooth=chipSmooth);
     }
     save(profile, file="objects/ChIPSeqProfilesAtLoci.RData");
     save(backgroundSignal, file="objects/ChIPSeqProfilesBackground.RData");

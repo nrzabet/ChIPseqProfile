@@ -6,6 +6,7 @@ source("InstallPackages.R")
 #2. load the libraries 
 suppressPackageStartupMessages(library(BSgenome.Dmelanogaster.UCSC.dm3));
 suppressPackageStartupMessages(library(xtable));
+
 source('functions/GenomicGeneralFunctions.R');
 source('functions/ComputeOccupancyFunctions.R');
 source('functions/GenomicOutputFunctions.R');
