@@ -119,35 +119,35 @@ if(loadGeneRef){
 print("ChIP-seq data")
 loadProfiles=FALSE;
 if(sum(ls(envir = .GlobalEnv) == "profile") == 0){
-  loadProfiles=TRUE;
+	loadProfiles=TRUE;
 } else if(is.null(profile)){
-  loadProfiles=TRUE;
+	loadProfiles=TRUE;
 }
 if(loadProfiles){
-  if(file.exists("objects/ChIPSeqProfilesAtLoci.RData") & file.exists("objects/ChIPSeqProfilesBackground.RData") & file.exists("objects/ChIPSeqProfilesMaxSignal.RData")){
-    load("objects/ChIPSeqProfilesAtLoci.RData");
-    load("objects/ChIPSeqProfilesBackground.RData");
-    load("objects/ChIPSeqProfilesMaxSignal.RData");
-  } else{
-    profile=vector("list",length(profileFiles));
-    names(profile)=names(profileFiles);
-    backgroundSignal=vector("list",length(profileFiles));
-    names(backgroundSignal)=names(profileFiles);
-    maxSignal=vector("list",length(profileFiles));
-    names(maxSignal)=names(profileFiles);
-    for(i in 1:length(profileFiles)){
-      profile[[i]] = read.table(profileFiles[[i]], skip=2);
-      profile[[i]][,4] = as.numeric(profile[[i]][,4]);
-      backgroundSignal[[i]] = mean(profile[[i]][,4]);
-      maxSignal[[i]] = max(profile[[i]][,4]);
-      profile[[i]] =  extractOccupancyDataAtLoci(profile=profile[[i]], setSequence=allSetPositive, maxSignal=maxSignal[[i]], removeBackground=0, chipSmooth=chipSmooth);
-    }
-    save(profile, file="objects/ChIPSeqProfilesAtLoci.RData");
-    save(backgroundSignal, file="objects/ChIPSeqProfilesBackground.RData");
-    save(maxSignal, file="objects/ChIPSeqProfilesMaxSignal.RData");
-  }	
+	if(file.exists("objects/ChIPSeqProfilesGenomeWide.RData") & file.exists("objects/ChIPSeqProfilesBackground.RData") & file.exists("objects/ChIPSeqProfilesMaxSignal.RData")){
+        load("objects/ChIPSeqProfilesGenomeWide.RData");
+        load("objects/ChIPSeqProfilesBackground.RData");
+        load("objects/ChIPSeqProfilesMaxSignal.RData");
+    } else{
+		profile=vector("list",length(profileFiles));
+		names(profile)=names(profileFiles);
+		backgroundSignal=vector("list",length(profileFiles));
+		names(backgroundSignal)=names(profileFiles);
+		maxSignal=vector("list",length(profileFiles));
+		names(maxSignal)=names(profileFiles);
+		for(i in 1:length(profileFiles)){
+			profile[[i]] = read.table(profileFiles[[i]], skip=2);
+			profile[[i]][,4] = as.numeric(profile[[i]][,4]);
+			backgroundSignal[[i]] = mean(profile[[i]][,4]);
+			maxSignal[[i]] = max(profile[[i]][,4]);
+			profile[[i]] =  extractOccupancyDataAtLoci(profile=profile[[i]], setSequence=genomeWideSetAccessibleRegions, maxSignal=maxSignal[[i]], removeBackground=0, chipSmooth=chipSmooth);
+		}
+        save(profile, file="objects/ChIPSeqProfilesGenomeWide.RData");
+		save(backgroundSignal, file="objects/ChIPSeqProfilesBackground.RData");
+		save(maxSignal, file="objects/ChIPSeqProfilesMaxSignal.RData");
+	}
 } else{
-  print("Using previously loaded ChIP-seq profiles")
+	print("Using previously loaded ChIP-seq profiles")
 }
 
 
