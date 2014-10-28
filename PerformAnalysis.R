@@ -6,7 +6,6 @@ source("InstallPackages.R")
 #2. load the libraries 
 suppressPackageStartupMessages(library(BSgenome.Dmelanogaster.UCSC.dm3));
 suppressPackageStartupMessages(library(xtable));
-
 source('functions/GenomicGeneralFunctions.R');
 source('functions/ComputeOccupancyFunctions.R');
 source('functions/GenomicOutputFunctions.R');
@@ -70,3 +69,5 @@ DNAAccessibility=NULL;
 print("Perform the genome-wide analysis")
 source("ScriptAccessibilityRegionsGenomeWideBestSolution.R")
 
+#9. compute the estimated TF abundance
+source("TFabundance.R")

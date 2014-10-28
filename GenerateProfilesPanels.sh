@@ -28,6 +28,9 @@ cd latex/KRAccessibleRegions
 pdflatex mathematicalEstimateKRAccessibleRegionsPWMThreshold070AllLoci.tex
 cd ../../
 
+cd latex/GTAccessibleRegionsJASPAR
+pdflatex mathematicalEstimateGTAccessibleRegionsJASPARPWMThreshold070AllLoci.tex
+cd ../../
 
 cd latex/HBAccessibleRegionsJASPAR
 pdflatex mathematicalEstimateHBAccessibleRegionsJASPARPWMThreshold070AllLoci.tex

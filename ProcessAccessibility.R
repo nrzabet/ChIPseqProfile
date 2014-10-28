@@ -1,20 +1,33 @@
 library("BSgenome.Dmelanogaster.UCSC.dm3")
 source("functions/GenomicGeneralFunctions.R")
 
+#reference genome
+DNASequnceSet=getSeq(Dmelanogaster,as.character=FALSE);
+names(DNASequnceSet)=seqnames(Dmelanogaster);
+DNASequnceSet=DNASequnceSet[names(DNASequnceSet)%in%c("chr2L", "chr2R", "chr3L", "chr3R", "chr4", "chrX")];# discard heterochromatin (chr2LHet, chr2RHet, chr3LHet, chr3RHet, chrXHet, chrYHet), ChrU and chrUextra (unmapped) and ChrM (mitochrondrial)
+
+
 
 #preprocess accessible regions
 if(!file.exists("objects/Dm3S5AccessibilityRegions.RData")){
-  BCDaccessibilityRaw = read.table("data/Dmel2006GeneS5Regions.tsv.gz", skip=2);
-  dm3S5AccessibilityRegions=vector("list",length(seqnames(Dmelanogaster)));
-  names(dm3S5AccessibilityRegions)=seqnames(Dmelanogaster);
-  for(i in seqnames(Dmelanogaster)){
-    dm3S5AccessibilityRegions[[i]]=rep(0,length(Dmelanogaster[[i]]));
-  }
-  for(i in 1:nrow(BCDaccessibilityRaw)){
-    dm3S5AccessibilityRegions[[BCDaccessibilityRaw[i,2]]][BCDaccessibilityRaw[i,3]:BCDaccessibilityRaw[i,4]] = 1;
-  }
-  save(dm3S5AccessibilityRegions, file="objects/Dm3S5AccessibilityRegions.RData")
+    BCDaccessibilityRaw = read.table("data/Dmel2006GeneS5Regions.tsv.gz",skip=2,header=FALSE,stringsAsFactors = FALSE);
+    dm3S5AccessibilityRegions=vector("list",length(names(DNASequnceSet)));
+    names(dm3S5AccessibilityRegions)=names(DNASequnceSet);
+    for(i in names(DNASequnceSet)){
+        dm3S5AccessibilityRegions[[i]]=rep(0,width(DNASequnceSet[i]));
+    }
+    chrID=match(BCDaccessibilityRaw[,2],names(DNASequnceSet));
+    chrIDNotNA=which(!is.na(chrID));
+    
+    for(i in chrIDNotNA){
+        dm3S5AccessibilityRegions[[chrID[i]]][BCDaccessibilityRaw[i,3]:BCDaccessibilityRaw[i,4]] = 1;
+    }
+    save(dm3S5AccessibilityRegions, file="objects/Dm3S5AccessibilityRegions.RData")
 }
+
+
+
+
 
 
 #preprocess probability of accessible DNA
@@ -24,33 +37,36 @@ if(!file.exists("objects/Dm3S5AccessibilityProbability.RData")){
   rep2Tab = read.table("data/Dmel2006GeneS5Rep2.bedGraph.gz",stringsAsFactors=FALSE, skip=1);
   
   
-  dm3S5AccessibilityReadDensity=vector("list",length(seqnames(Dmelanogaster)));
-  names(dm3S5AccessibilityReadDensity)=seqnames(Dmelanogaster);
-  for(i in seqnames(Dmelanogaster)){
+  dm3S5AccessibilityReadDensity=vector("list",length(names(DNASequnceSet)));
+  names(dm3S5AccessibilityReadDensity)=names(DNASequnceSet);
+  for(i in names(DNASequnceSet)){
     dm3S5AccessibilityReadDensity[[i]]=rep(0,length(Dmelanogaster[[i]]));
   }
   
+  chrID=match(rep1Tab[,1],names(DNASequnceSet));
+  chrIDNotNA=which(!is.na(chrID));
   
-  for(i in 2:(nrow(rep1Tab)-1)){
-    chr = rep1Tab[i,1];
-    start = ceiling((rep1Tab[i-1,2]+rep1Tab[i,2])/2);
-    end = floor((rep1Tab[i,2]+rep1Tab[i+1,2])/2);
+  for(i in chrIDNotNA){
+    chr = chrID[i];
+    start = rep1Tab[i,2]-9;
+    end = rep1Tab[i,3]+9;
     value=rep1Tab[i,5];
     dm3S5AccessibilityReadDensity[[chr]][start:end] = value;
   }
   
+  chrID=match(rep2Tab[,1],names(DNASequnceSet));
+  chrIDNotNA=which(!is.na(chrID));
   
-  for(i in 2:(nrow(rep2Tab)-1)){
-    chr = rep2Tab[i,1];
-    start = ceiling((rep2Tab[i-1,2]+rep2Tab[i,2])/2);
-    end = floor((rep2Tab[i,2]+rep2Tab[i+1,2])/2);
+  for(i in chrIDNotNA){
+    chr = chrID[i];
+    start = rep2Tab[i,2]-9;
+    end = rep2Tab[i,3]+9;
     value=rep2Tab[i,5];
     dm3S5AccessibilityReadDensity[[chr]][start:end] = dm3S5AccessibilityReadDensity[[chr]][start:end]+value;
   }
   
   alpha=6.008;
   beta=0.207;
-  dm3S5AccessibilityReadDensity[["chrdmel_mitochondrion_genome"]]=NULL;
   dm3S5AccessibilityProbability=vector("list",length(dm3S5AccessibilityReadDensity));
   names(dm3S5AccessibilityProbability)=names(dm3S5AccessibilityReadDensity);
   for(index in 1:length(dm3S5AccessibilityReadDensity)){
@@ -58,5 +74,6 @@ if(!file.exists("objects/Dm3S5AccessibilityProbability.RData")){
       dm3S5AccessibilityProbability[[index]]=processReadDensity((dm3S5AccessibilityReadDensity[[index]]/2), alpha, beta)
     }
   }
-  save(dm3S5AccessibilityProbability, file="objects/Dm3S5AccessibilityProbability.RData")
+  save(dm3S5AccessibilityProbability, file="objects/Dm3S5AccessibilityProbability.RData");
+  
 }

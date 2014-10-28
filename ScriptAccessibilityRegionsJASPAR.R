@@ -1,9 +1,8 @@
 ################################################################################
 # LOAD FUNCTIONS
 ################################################################################
-suppressPackageStartupMessages(library(BSgenome.Dmelanogaster.UCSC.dm3));
-suppressPackageStartupMessages(library(xtable));
-
+library(BSgenome.Dmelanogaster.UCSC.dm3);
+library(xtable);
 
 source('functions/GenomicGeneralFunctions.R');
 source('functions/GenomicOutputFunctions.R');
@@ -53,12 +52,17 @@ TFSize = NULL;
 profileFiles= list("BCD"="data/BCD11.wig.gz","CAD"="data/CAD11.wig.gz","GT"="data/GT21.wig.gz","HB"="data/HB12.wig.gz","KR"="data/KR11.wig.gz");
 
 
-
 #reference genome
 DNASequnceSet=getSeq(Dmelanogaster,as.character=FALSE);
 names(DNASequnceSet)=seqnames(Dmelanogaster);
+BPFrequency=computeBPFrequency(DNASequnceSet);
+#DNASequnceSet=DNASequnceSet[-union(grep("chrU", names(DNASequnceSet)),grep("Het", names(DNASequnceSet)))]# removed DNA sequences that were not assigned
+DNASequnceSet=DNASequnceSet[names(DNASequnceSet)%in%c("chr2L", "chr2R", "chr3L", "chr3R", "chr4", "chrX")];# discard heterochromatin (chr2LHet, chr2RHet, chr3LHet, chr3RHet, chrXHet, chrYHet), ChrU and chrUextra (unmapped) and ChrM (mitochrondrial)
 
-#
+
+
+#ploidy of the genome
+ploidy=2;
 
 ################################################################################
 # LOAD GENE REFERENCE
@@ -94,35 +98,35 @@ if(loadGeneRef){
 print("ChIP-seq data")
 loadProfiles=FALSE;
 if(sum(ls(envir = .GlobalEnv) == "profile") == 0){
-  loadProfiles=TRUE;
+	loadProfiles=TRUE;
 } else if(is.null(profile)){
-  loadProfiles=TRUE;
+	loadProfiles=TRUE;
 }
 if(loadProfiles){
-  if(file.exists("objects/ChIPSeqProfilesAtLoci.RData") & file.exists("objects/ChIPSeqProfilesBackground.RData") & file.exists("objects/ChIPSeqProfilesMaxSignal.RData")){
-    load("objects/ChIPSeqProfilesAtLoci.RData");
-    load("objects/ChIPSeqProfilesBackground.RData");
-    load("objects/ChIPSeqProfilesMaxSignal.RData");
-  } else{
-    profile=vector("list",length(profileFiles));
-    names(profile)=names(profileFiles);
-    backgroundSignal=vector("list",length(profileFiles));
-    names(backgroundSignal)=names(profileFiles);
-    maxSignal=vector("list",length(profileFiles));
-    names(maxSignal)=names(profileFiles);
-    for(i in 1:length(profileFiles)){
-      profile[[i]] = read.table(profileFiles[[i]], skip=2);
-      profile[[i]][,4] = as.numeric(profile[[i]][,4]);
-      backgroundSignal[[i]] = mean(profile[[i]][,4]);
-      maxSignal[[i]] = max(profile[[i]][,4]);
-      profile[[i]] =  extractOccupancyDataAtLoci(profile=profile[[i]], setSequence=allSetPositive, maxSignal=maxSignal[[i]], removeBackground=0, chipSmooth=chipSmooth);
-    }
-    save(profile, file="objects/ChIPSeqProfilesAtLoci.RData");
-    save(backgroundSignal, file="objects/ChIPSeqProfilesBackground.RData");
-    save(maxSignal, file="objects/ChIPSeqProfilesMaxSignal.RData");
-  }	
+	if(file.exists("objects/ChIPSeqProfilesAtLoci.RData") & file.exists("objects/ChIPSeqProfilesBackground.RData") & file.exists("objects/ChIPSeqProfilesMaxSignal.RData")){
+            load("objects/ChIPSeqProfilesAtLoci.RData");
+            load("objects/ChIPSeqProfilesBackground.RData");
+            load("objects/ChIPSeqProfilesMaxSignal.RData");
+        } else{
+		profile=vector("list",length(profileFiles));
+		names(profile)=names(profileFiles);
+		backgroundSignal=vector("list",length(profileFiles));
+		names(backgroundSignal)=names(profileFiles);
+		maxSignal=vector("list",length(profileFiles));
+		names(maxSignal)=names(profileFiles);
+		for(i in 1:length(profileFiles)){
+			profile[[i]] = read.table(profileFiles[[i]], skip=2);
+			profile[[i]][,4] = as.numeric(profile[[i]][,4]);
+			backgroundSignal[[i]] = mean(profile[[i]][,4]);
+			maxSignal[[i]] = max(profile[[i]][,4]);
+			profile[[i]] =  extractOccupancyDataAtLoci(profile=profile[[i]], setSequence=allSetPositive, maxSignal=maxSignal[[i]], removeBackground=0, chipSmooth=chipSmooth);
+		}
+	        save(profile, file="objects/ChIPSeqProfilesAtLoci.RData");
+		save(backgroundSignal, file="objects/ChIPSeqProfilesBackground.RData");
+		save(maxSignal, file="objects/ChIPSeqProfilesMaxSignal.RData");
+	}	
 } else{
-  print("Using previously loaded ChIP-seq profiles")
+	print("Using previously loaded ChIP-seq profiles")
 }
 
 
@@ -172,7 +176,7 @@ if(toComputePWMScores){
 			bindingEnergy[[i]]=vector("list", nrow(lambdasMatrix));
 			for(j in 1:nrow(lambdasMatrix)){
 				bindingEnergy[[i]][[j]] = computePWMScores(directory="data", PFMFilename=PFMFilenames, PFMFormat="raw", DNASequenceSet=DNASequnceSet, setSequence=allSetPositive,
-									   TF=TF, DNAAccessibility=dm3S5AccessibilityRegions, PWMPseudocount=1,
+                                       BPFrequency=BPFrequency,TF=TF, DNAAccessibility=dm3S5AccessibilityRegions, PWMPseudocount=1,
 									   PWMUseNaturalLog=FALSE, PWMNoOfSites=NULL, PWMThreshold=rep(PWMThreshold[i],times=length(TF)),lambda=lambdasMatrix[j,],
 									   strand="+-", strandRule="max");
 			}
@@ -230,7 +234,7 @@ if(toComputeOccupancy){
 				for(k in 1:nrow(boundMoleculesMatrix)){
 				print(paste("PWMthreshold = ",(formatC(round(100*PWMThreshold[i]), width = 3, format = "d", flag = "0")),"; lambda = ",(formatC(round(100*lambdasMatrix[j,]), width = 3, format = "d", flag = "0")),"; abundance=", boundMoleculesMatrix[k,], sep=""));
 				occupancy[[i]][[j]][[k]] = computeOccupancy(TF=TF, PWMScore=bindingEnergy[[i]][[j]]$PWMScore, indexPWMThresholded=bindingEnergy[[i]][[j]]$indexPWMThresholded,
-									    DNALength=bindingEnergy[[i]][[j]]$DNALength, averageExpPWMScore=bindingEnergy[[i]][[j]]$averageExpPWMScore, DNAAccessibility=DNAAccessibility,
+                                        averageExpPWMScore=bindingEnergy[[i]][[j]]$averageExpPWMScore, DNALength=bindingEnergy[[i]][[j]]$DNALength,ploidy=ploidy, DNAAccessibility=DNAAccessibility,
 									    setSequence=allSetPositive, lambda=lambdasMatrix[j,], boundMolecules=boundMoleculesMatrix[k,], norm=TRUE,
 									    outputBoundMoleculesOccupancy=TRUE, backgroundSignal=unlist(backgroundSignal), maxSignal=unlist(maxSignal), outputChIPseqProfile=TRUE,
 									    chipMean= chipMean, chipSd=chipSd, chipSmooth = chipSmooth, removeBackground=0, profile=profile);
@@ -244,7 +248,7 @@ if(toComputeOccupancy){
 	print("Using previously computed genomic occupancy of TFs")
 }
 
-
+source('functions/GenomicOutputFunctions.R');
 ################################################################################
 # PLOT HEATMAPS
 ################################################################################
@@ -252,9 +256,9 @@ for(imageType in c("pdf")){
 	for(i in 1:length(PWMThreshold)){
 		txtCase = paste("PWMthreshold",(formatC(round(100*PWMThreshold[i]), width = 3, format = "d", flag = "0")),sep="");	
 		plotOccupancyModelQualityHeatmaps(occupancy=occupancy[[i]], TF=c("BCD","CAD"), lambdas=lambdasMatrix[,1], boundMolecules=boundMoleculesMatrix[,1], directory="img/heatmap",
-						  plotFilename=paste("BCDCADAccessibiltiyRegionsJASPAR",txtCase,sep=""), imageType=imageType, contour=TRUE);
+						  plotFilename=paste("BCDCADAccessibiltiyRegionsJASPAR",txtCase,sep=""), imageType=imageType, contour=TRUE, regionsThreshold=0.12);
 		plotOccupancyModelQualityHeatmaps(occupancy=occupancy[[i]], TF=c("GT","HB","KR"), lambdas=lambdasMatrix[,1], boundMolecules=boundMoleculesMatrix[,1], directory="img/heatmap",
-						  plotFilename=paste("GTHBKRAccessibiltiyRegionsJASPAR",txtCase,sep=""), imageType=imageType, contour=TRUE);
+						  plotFilename=paste("GTHBKRAccessibiltiyRegionsJASPAR",txtCase,sep=""), imageType=imageType, contour=TRUE, regionsThreshold=0.12);
 	}
 }
 
@@ -262,19 +266,18 @@ for(imageType in c("pdf")){
 ################################################################################
 # OPTIMAL SET OF PARAMETERS
 ################################################################################
-optimalSetOfParameters = matrix(0,nrow=length(TF),ncol=5);
+optimalSetOfParameters = matrix(0,nrow=length(TF),ncol=4);
 row.names(optimalSetOfParameters)=TF;
-colnames(optimalSetOfParameters)=c("N", "$\\lambda$", "$\\theta$","$MSE$", "$\\rho$");
+colnames(optimalSetOfParameters)=c("N", "$\\lambda$","$MSE$", "$\\rho$");
 for(i in 1:length(PWMThreshold)){
 	for(TFid in 1: length(TF)){
-		optimalParameters = getOptimalSetOfParameters(occupancy[[i]], c(TF[TFid]), lambdasMatrix[,TFid], boundMoleculesMatrix[,TFid]);
+		optimalParameters = getOptimalSetOfParameters(occupancy[[i]], c(TF[TFid]), lambdasMatrix[,TFid], boundMoleculesMatrix[,TFid],parameter="MSE");
 		l=optimalParameters[1,1];
 		m=optimalParameters[1,2];
 		
 		optimalSetOfParameters[TFid,1]=boundMoleculesMatrix[m,TFid];
 		optimalSetOfParameters[TFid,2]=format(round(lambdasMatrix[l,TFid], 2), nsmall = 2);
-		optimalSetOfParameters[TFid,3]=format(round(occupancy[[i]][[l]][[m]]$meanTheta[[TF[TFid]]], 2), nsmall = 2);
-		
+				
 		optimalMSE=format(round(occupancy[[i]][[l]][[m]]$meanMSE[[TF[TFid]]], 2), nsmall = 2);
 		optimalCorrelation=format(round(occupancy[[i]][[l]][[m]]$meanCorrelation[[TF[TFid]]], 2), nsmall = 2);
 		
@@ -288,14 +291,14 @@ for(i in 1:length(PWMThreshold)){
 		m=optimalParameters[1,2];
 		maxCorrelation=format(round(occupancy[[i]][[l]][[m]]$meanCorrelation[[TF[TFid]]], 2), nsmall = 2);
 
-		optimalSetOfParameters[TFid,4]=paste(optimalMSE," (",minMSE,")",sep="");
-		optimalSetOfParameters[TFid,5]=paste(optimalCorrelation," (",maxCorrelation,")",sep="");
+		optimalSetOfParameters[TFid,3]=paste(optimalMSE," (",minMSE,")",sep="");
+		optimalSetOfParameters[TFid,4]=paste(optimalCorrelation," (",maxCorrelation,")",sep="");
 
 	}
 }
 	
-tableCaption="\\emph{Set of parameters that minimises the difference between the ChIP-seq profiles when using the binding motif from JASPAR database} \\citep{portales-casamar_2010}; see Figure \\ref{fig:PWMmotifsJaspar}. Our model assumes binary DNA accessibility data (the accessibility of any site can be either $0$ or $1$ depending on whether the site is accessible or not). We also listed the values for the mean square error ($MSE$) and correlation ($\\rho$). The values in the parentheses represent the minimum mean square error and the maximum correlation. We considered only the sites that have a PWM score higher than $70\\%$ of the distance between the lowest and the highest score.";	
-tableLatex=xtable(optimalSetOfParameters, label ="tab:paramsModelAccRegionsJaspar070", caption =tableCaption,align="|l|r|r|r|r|r|");
+tableCaption="\\emph{Set of parameters that minimises the difference between the ChIP-seq profiles when using the binding motif from JASPAR database} \\citep{portales-casamar_2010}; see Figure \\ref{fig:PWMmotifsJaspar}. Our model assumes binary DNA accessibility data (the accessibility of any site can be either $0$ or $1$ depending on whether the site is accessible or not). We also listed the values for the mean squared error ($MSE$) and correlation ($\\rho$). The values in the parentheses represent the minimum mean squared error and the maximum correlation. We considered only the sites that have a PWM score higher than $70\\%$ of the distance between the lowest and the highest score.";	
+tableLatex=xtable(optimalSetOfParameters, label ="tab:paramsModelAccRegionsJaspar070", caption =tableCaption,align="|l|r|r|r|r|");
 print.xtable(tableLatex, sanitize.text.function = function(x) x,file="tables/OptimalSetOfParametersTableAccessibilityRegionsJASPAR.tex",hline.after=-1:nrow(optimalSetOfParameters),floating.environment="table")
 
 
@@ -305,14 +308,14 @@ print.xtable(tableLatex, sanitize.text.function = function(x) x,file="tables/Opt
 ################################################################################
 for(imageType in c("pdf")){
 	for(i in 1:length(PWMThreshold)){
-		for(TFid in which(TF%in%c("HB","KR"))){
-			optimalParameters = getOptimalSetOfParameters(occupancy[[i]], c(TF[TFid]), lambdasMatrix[,TFid], boundMoleculesMatrix[,TFid]);
+		for(TFid in which(TF%in%c("GT","HB","KR"))){
+			optimalParameters = getOptimalSetOfParameters(occupancy[[i]], c(TF[TFid]), lambdasMatrix[,TFid], boundMoleculesMatrix[,TFid],parameter="MSE");
 			l=optimalParameters[1,1];
 			m=optimalParameters[1,2];
 			txtCase = paste("PWMThreshold",(formatC(round(100*PWMThreshold[i]), width = 3, format = "d", flag = "0")),
 					"lambda",(formatC(round(100*lambdasMatrix[l,TFid]), width = 3, format = "d", flag = "0")), sep="");
-			plotOccupancyProfile(occupancy=occupancy[[i]][[l]][[m]]$occupancyAbundanceChIP[[TFid]], PWMScore=bindingEnergy[[i]][[l]]$PWMScore[[TFid]], lambda=lambdasMatrix[l,TFid],
-						 maxPWMScore=bindingEnergy[[i]][[l]]$maxPWMScore[[TFid]], DNAAccessibility=DNAAccessibility, directory="img/profile",
+			plotOccupancyProfile(occupancy=occupancy[[i]][[l]][[m]]$occupancyAbundanceChIP[[TFid]], PWMScore=occupancy[[i]][[l]][[m]]$occupancyAbundance[[TFid]], lambda=lambdasMatrix[l,TFid],
+					     maxPWMScore=1, DNAAccessibility=DNAAccessibility, directory="img/profile",
 						 plotFilename=paste(TF[TFid],"AccessibilityRegionsJASPAR",txtCase,sep=""), profile=profile[[TFid]], imageType=imageType, setSequence=allSetPositive,
 						 TF=TF[TFid], boundMolecules=boundMoleculesMatrix[m,TFid], outputPWMScore=TRUE, outputOccupancyAbundance=TRUE, geneRef=geneRef, stepSize=20);
 		}		

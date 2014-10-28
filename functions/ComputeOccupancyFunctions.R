@@ -26,7 +26,7 @@
 ###         averageExpPWMScore: a list consisting of the genome-wide computed average of the DNA accessibility data multiplied with the exponential of the binding energy (PWM score multiplied to the 1/lambda) for each TF
 ###         PWM: a list consisting of the PFM matrix for each TF
 ###         PFM: a list consisting of the PWM matrix for each TF
-computePWMScores <- function(directory, PFMFilename, PFMFormat="raw", DNASequenceSet, setSequence,TF=NULL, DNAAccessibility=NULL, PWMPseudocount=1, PWMUseNaturalLog=FALSE, PWMNoOfSites=NULL, PWMThreshold=NULL, lambda=1, strand="+", strandRule="max"){
+computePWMScores <- function(directory, PFMFilename, PFMFormat="raw", DNASequenceSet, setSequence, BPFrequency=NULL, TF=NULL, DNAAccessibility=NULL, PWMPseudocount=1, PWMUseNaturalLog=FALSE, PWMNoOfSites=NULL, PWMThreshold=NULL, lambda=1, strand="+", strandRule="max"){
 	
 	#the path to the PFM files
 	path="";
@@ -53,7 +53,9 @@ computePWMScores <- function(directory, PFMFilename, PFMFormat="raw", DNASequenc
 	
 	if(!is.null(DNASequenceSet)){
 		#base pair frequency in the genome
-		BPFrequency=computeBPFrequency(DNASequenceSet);
+        if(is.null(BPFrequency)){
+            BPFrequency=computeBPFrequency(DNASequenceSet);
+        }
 		
 		#construct the PWMs
 		PWM = vector("list",length(PFMFilename));
@@ -84,6 +86,7 @@ computePWMScores <- function(directory, PFMFilename, PFMFormat="raw", DNASequenc
 		#compute mean waiting time, max PWM score and min PWM score
 		print("compute the mean waiting time");
 		averageExpPWMScore = vector("list",length(PFMFilename));
+		sumExpPWMScore = vector("list",length(PFMFilename));
 		maxPWMScore = vector("list",length(PFMFilename));
 		minPWMScore = vector("list",length(PFMFilename));
 		if(!is.null(TF) & length(TF)==length(PFMFilename)){
@@ -98,14 +101,14 @@ computePWMScores <- function(directory, PFMFilename, PFMFormat="raw", DNASequenc
 				for(j in 1:length(DNASequenceScoreSet[[i]])){
 					minLength = min(length(DNASequenceScoreSet[[i]][[j]]),length(DNAAccessibility[[j]]));	
 					indexes=1:minLength;
-					averageExpPWMScoreLocal = c(averageExpPWMScoreLocal,mean(DNAAccessibility[[j]][indexes]*exp((1/lambda[i])*DNASequenceScoreSet[[i]][[j]][indexes])));	
+					averageExpPWMScoreLocal = c(averageExpPWMScoreLocal,sum(DNAAccessibility[[j]][indexes]*exp((1/lambda[i])*DNASequenceScoreSet[[i]][[j]][indexes])));	
 				}
 			} else{
-				averageExpPWMScoreLocal = unlist(lapply(lapply(lapply(DNASequenceScoreSet[[i]],"*", (1/lambda[i])),exp),mean));
+				averageExpPWMScoreLocal = unlist(lapply(lapply(lapply(DNASequenceScoreSet[[i]],"*", (1/lambda[i])),exp),sum));
 			}
 			
-			
-			averageExpPWMScore[[i]] = mean(averageExpPWMScoreLocal*(DNALength/DNALengthTotal));
+			sumExpPWMScore[[i]] = (averageExpPWMScoreLocal);
+			averageExpPWMScore[[i]] = sum(averageExpPWMScoreLocal)/DNALengthTotal;
 			maxPWMScore[[i]] = max(unlist(lapply(DNASequenceScoreSet[[i]],max)));
 			minPWMScore[[i]] = min(unlist(lapply(DNASequenceScoreSet[[i]],min)));
 			
@@ -143,7 +146,7 @@ computePWMScores <- function(directory, PFMFilename, PFMFormat="raw", DNASequenc
 			indexPWMThresholded[[i]]  = getIndexOfPWMThresholded(DNASequenceScoreSetLocal[[i]],PWMThresholdLocal);
 		}
 
-		result=list("DNALength"=DNALengthTotal,"PWMScore"=DNASequenceScoreSetLocal, "maxPWMScore"=maxPWMScore, "minPWMScore"=minPWMScore, "indexPWMThresholded"=indexPWMThresholded, "averageExpPWMScore"=averageExpPWMScore, "PWM"=PWM, "PFM"=PFM);
+		result=list("DNALength"=DNALengthTotal,"PWMScore"=DNASequenceScoreSetLocal, "maxPWMScore"=maxPWMScore, "minPWMScore"=minPWMScore, "indexPWMThresholded"=indexPWMThresholded, "averageExpPWMScore"=averageExpPWMScore, "sumExpPWMScore"=sumExpPWMScore, "PWM"=PWM, "PFM"=PFM);
 	}
 	
 	
@@ -191,8 +194,9 @@ extractDNAAccesibilityAtLoci <-function(DNAAccessibility,setSequence){
 ### TF: the names of the TFs
 ### PWMScore: a list of vectors with the PWM score at each position
 ### indexPWMThresholded: a list of vectors with the site with a PWM score higher than a threshold
-### DNALength: the length of the genome
 ### averageExpPWMScore: the average of the exponential of the PWM score for each TF
+### DNALength: the length of the genome
+### ploidy=2: the  the number of sets of chromosomes in the nucleus of a cell.
 ### DNAAccessibility=NULL: the DNA accessibility data. If NULL, it assumes that the entire genome is accessible
 ### setSequence=NULL: a list of GenomicRaegions where the occupancy will be computed. If NULL, the occupancy is computed genome wide
 ### lambda=1: the scalling factor between the PWM and the binding energy E=w*(1/lambda).
@@ -215,7 +219,7 @@ extractDNAAccesibilityAtLoci <-function(DNAAccessibility,setSequence){
 ###			meanCorrelation: a list with the mean correlation between occupancyAbundanceChIP and the profile for each TF
 ###			meanMSE: a list with the average mean square error between occupancyAbundanceChIP and the profile for each TF
 ###			meanTheta: a list with the mean theta value for each TF
-computeOccupancy <-function(TF, PWMScore, indexPWMThresholded, DNALength, averageExpPWMScore, DNAAccessibility=NULL, setSequence=NULL, lambda=1, boundMolecules=c(1), norm=FALSE, outputBoundMoleculesOccupancy=TRUE, backgroundSignal=NULL, maxSignal=NULL, outputChIPseqProfile=FALSE, chipMean=150, chipSd=150, chipSmooth = NULL, removeBackground = 0, profile=NULL){
+computeOccupancy <-function(TF, PWMScore, indexPWMThresholded, averageExpPWMScore, DNALength, ploidy=2, DNAAccessibility=NULL, setSequence=NULL, lambda=1, boundMolecules=c(1), norm=FALSE, outputBoundMoleculesOccupancy=TRUE, backgroundSignal=NULL, maxSignal=NULL, outputChIPseqProfile=FALSE, chipMean=150, chipSd=150, chipSmooth = NULL, removeBackground = 0, profile=NULL){
 	
 
 	if(is.null(backgroundSignal) | length(TF)!=length(backgroundSignal)){
@@ -257,7 +261,7 @@ computeOccupancy <-function(TF, PWMScore, indexPWMThresholded, DNALength, averag
 		index=1;
 		if(outputBoundMoleculesOccupancy){
 			print(paste("compute occupancy ",TF[i],sep=""));
-			occupancyAbundanceLocal = computeOccupancyPWMAbundance(PWMScore=PWMScore[[i]], DNALength=DNALength, averageExpPWMScore=averageExpPWMScore[[i]], DNAAccessibility=DNAAccessibility,
+			occupancyAbundanceLocal = computeOccupancyPWMAbundance(PWMScore=PWMScore[[i]], averageExpPWMScore=averageExpPWMScore[[i]], DNALength=DNALength, ploidy=ploidy, DNAAccessibility=DNAAccessibility,
 										indexPWMThresholded=indexPWMThresholded[[i]], boundMolecules=boundMolecules[i],lambda=lambda[i], norm=norm,
 										backgroundSignal=backgroundSignal[i], maxSignal=maxSignal[i]);									
 			# output the ChIP-seq like profiles
@@ -294,9 +298,10 @@ computeOccupancy <-function(TF, PWMScore, indexPWMThresholded, DNALength, averag
 
 ### Computes the occupancy, given a list of PWM scores and the number of bound molecules. 
 ### PWMScore: a list of vectors with the PWM scores at each position on the genome. The binding energy (E) can be approximated by the PWM score (w) as E=-w
-### DNALength: the length of the DNA
 ### averageExpPWMScore: the average exponential PWM score
-### DNAAccessibility=NULL: a vector with the accessibility level at each position. The accessibility needs to be normalised to its highest value so that it resides win the interval [0,1]. If this is NULL accessibility is not used to compute the occupancy profile. 
+### DNALength: the length of the DNA
+### ploidy=2: the  the number of sets of chromosomes in the nucleus of a cell.
+### DNAAccessibility=NULL: a vector with the accessibility level at each position. The accessibility needs to be normalised to its highest value so that it resides win the interval [0,1]. If this is NULL accessibility is not used to compute the occupancy profile.
 ### indexPWMThresholded=NULL: the sites that have a PWM score higher than a threshold, if NULL all sites are considered
 ### boundMolecules=1: the number of bound molecules to the DNA
 ### lambda=1: the scalling factor between the PWM and the binding energy E=w*(1/lambda).
@@ -304,7 +309,7 @@ computeOccupancy <-function(TF, PWMScore, indexPWMThresholded, DNALength, averag
 ### backgroundSignal=0: the background signal (mean or median of the ChIP-seq data)
 ### maxSignal = 1: the highest peak in the ChIP-seq data.
 ### return: a list consisting of a vector with the occupancy for each locus
-computeOccupancyPWMAbundance <- function(PWMScore, DNALength, averageExpPWMScore, DNAAccessibility=NULL, indexPWMThresholded=NULL, boundMolecules=1, lambda=1, norm=TRUE, backgroundSignal=0, maxSignal=1){	
+computeOccupancyPWMAbundance <- function(PWMScore, averageExpPWMScore, DNALength, ploidy=2, DNAAccessibility=NULL, indexPWMThresholded=NULL, boundMolecules=1, lambda=1, norm=TRUE, backgroundSignal=0, maxSignal=1){
 	result=NULL;
 	
 	
@@ -321,14 +326,14 @@ computeOccupancyPWMAbundance <- function(PWMScore, DNALength, averageExpPWMScore
 			}
 			
 			
-			result[[i]][indexes] = (boundMolecules*DNAAccessibility[[i]][indexes]*exp((1/lambda)*PWMScore[[i]][indexes]))/(boundMolecules*DNAAccessibility[[i]][indexes]*exp((1/lambda)*PWMScore[[i]][indexes])+(((DNALength))/(1))*averageExpPWMScore);
+			result[[i]][indexes] = (boundMolecules*DNAAccessibility[[i]][indexes]*exp((1/lambda)*PWMScore[[i]][indexes]))/(boundMolecules*DNAAccessibility[[i]][indexes]*exp((1/lambda)*PWMScore[[i]][indexes])+DNALength*ploidy*averageExpPWMScore);
 		} else{
 			if(is.null(indexPWMThresholded)){
 				indexes=1:length(PWMScore[[i]]);
 			} else{
 				indexes=indexPWMThresholded[[i]];
 			}
-			result[[i]][indexes] = 1/(1+(((DNALength-(boundMolecules-1)))/(boundMolecules))*averageExpPWMScore*exp(-(1/lambda)*PWMScore[[i]][indexes]));
+			result[[i]][indexes] = 1/(1+(((ploidy*DNALength-(boundMolecules-1)))/(boundMolecules))*averageExpPWMScore*exp(-(1/lambda)*PWMScore[[i]][indexes]));
 		}
 		
 		result[[i]] = backgroundSignal + result[[i]]*(maxSignal-backgroundSignal);

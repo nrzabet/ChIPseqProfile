@@ -1,9 +1,8 @@
 ################################################################################
 # LOAD FUNCTIONS
 ################################################################################
-suppressPackageStartupMessages(library(BSgenome.Dmelanogaster.UCSC.dm3));
-suppressPackageStartupMessages(library(xtable));
-
+library(BSgenome.Dmelanogaster.UCSC.dm3);
+library(xtable);
 
 source('functions/GenomicGeneralFunctions.R');
 source('functions/GenomicOutputFunctions.R');
@@ -78,12 +77,16 @@ TFSize = NULL;
 profileFiles= list("BCD"="data/BCD11.wig.gz","CAD"="data/CAD11.wig.gz","GT"="data/GT21.wig.gz","HB"="data/HB12.wig.gz","KR"="data/KR11.wig.gz");
 
 
-
 #reference genome
 DNASequnceSet=getSeq(Dmelanogaster,as.character=FALSE);
 names(DNASequnceSet)=seqnames(Dmelanogaster);
+BPFrequency=computeBPFrequency(DNASequnceSet);
+#DNASequnceSet=DNASequnceSet[-union(grep("chrU", names(DNASequnceSet)),grep("Het", names(DNASequnceSet)))]# removed DNA sequences that were not assigned
+DNASequnceSet=DNASequnceSet[names(DNASequnceSet)%in%c("chr2L", "chr2R", "chr3L", "chr3R", "chr4", "chrX")];# discard heterochromatin (chr2LHet, chr2RHet, chr3LHet, chr3RHet, chrXHet, chrYHet), ChrU and chrUextra (unmapped) and ChrM (mitochrondrial)
 
-#
+
+#ploidy of the genome
+ploidy=2;
 
 ################################################################################
 # LOAD GENE REFERENCE
@@ -125,10 +128,10 @@ if(sum(ls(envir = .GlobalEnv) == "profile") == 0){
 }
 if(loadProfiles){
 	if(file.exists("objects/ChIPSeqProfilesGenomeWide.RData") & file.exists("objects/ChIPSeqProfilesBackground.RData") & file.exists("objects/ChIPSeqProfilesMaxSignal.RData")){
-        load("objects/ChIPSeqProfilesGenomeWide.RData");
-        load("objects/ChIPSeqProfilesBackground.RData");
-        load("objects/ChIPSeqProfilesMaxSignal.RData");
-    } else{
+            load("objects/ChIPSeqProfilesGenomeWide.RData");
+            load("objects/ChIPSeqProfilesBackground.RData");
+            load("objects/ChIPSeqProfilesMaxSignal.RData");
+        } else{
 		profile=vector("list",length(profileFiles));
 		names(profile)=names(profileFiles);
 		backgroundSignal=vector("list",length(profileFiles));
@@ -142,10 +145,10 @@ if(loadProfiles){
 			maxSignal[[i]] = max(profile[[i]][,4]);
 			profile[[i]] =  extractOccupancyDataAtLoci(profile=profile[[i]], setSequence=genomeWideSetAccessibleRegions, maxSignal=maxSignal[[i]], removeBackground=0, chipSmooth=chipSmooth);
 		}
-        save(profile, file="objects/ChIPSeqProfilesGenomeWide.RData");
+	        save(profile, file="objects/ChIPSeqProfilesGenomeWide.RData");
 		save(backgroundSignal, file="objects/ChIPSeqProfilesBackground.RData");
 		save(maxSignal, file="objects/ChIPSeqProfilesMaxSignal.RData");
-	}
+	}	
 } else{
 	print("Using previously loaded ChIP-seq profiles")
 }
@@ -197,7 +200,7 @@ if(toComputePWMScores){
 			bindingEnergy[[i]]=vector("list", nrow(lambdasMatrix));
 			for(j in 1:nrow(lambdasMatrix)){
 				bindingEnergy[[i]][[j]] = computePWMScores(directory="data", PFMFilename=PFMFilenames, PFMFormat="raw", DNASequenceSet=DNASequnceSet, setSequence=genomeWideSetAccessibleRegions,
-									   TF=TF, DNAAccessibility=dm3S5AccessibilityRegions, PWMPseudocount=1,
+                                       BPFrequency=BPFrequency,TF=TF, DNAAccessibility=dm3S5AccessibilityRegions, PWMPseudocount=1,
 									   PWMUseNaturalLog=FALSE, PWMNoOfSites=NULL, PWMThreshold=rep(PWMThreshold[i],times=length(TF)),lambda=lambdasMatrix[j,],
 									   strand="+-", strandRule="max");
 			}
@@ -255,7 +258,7 @@ if(toComputeOccupancy){
 				for(k in 1:nrow(boundMoleculesMatrix)){
 				print(paste("PWMthreshold = ",(formatC(round(100*PWMThreshold[i]), width = 3, format = "d", flag = "0")),"; lambda = ",(formatC(round(100*lambdasMatrix[j,]), width = 3, format = "d", flag = "0")),"; abundance=", boundMoleculesMatrix[k,], sep=""));
 				occupancyGenomeWide[[i]][[j]][[k]] = computeOccupancy(TF=TF, PWMScore=bindingEnergy[[i]][[j]]$PWMScore, indexPWMThresholded=bindingEnergy[[i]][[j]]$indexPWMThresholded,
-									    DNALength=bindingEnergy[[i]][[j]]$DNALength, averageExpPWMScore=bindingEnergy[[i]][[j]]$averageExpPWMScore, DNAAccessibility=DNAAccessibility,
+                                        averageExpPWMScore=bindingEnergy[[i]][[j]]$averageExpPWMScore, DNALength=bindingEnergy[[i]][[j]]$DNALength,ploidy=ploidy, DNAAccessibility=DNAAccessibility,
 									    setSequence=genomeWideSetAccessibleRegions, lambda=lambdasMatrix[j,], boundMolecules=boundMoleculesMatrix[k,], norm=TRUE,
 									    outputBoundMoleculesOccupancy=TRUE, backgroundSignal=unlist(backgroundSignal), maxSignal=unlist(maxSignal), outputChIPseqProfile=TRUE,
 									    chipMean= chipMean, chipSd=chipSd, chipSmooth = chipSmooth, removeBackground=0, profile=profile);
@@ -277,14 +280,14 @@ for(imgType in c("pdf")){
 	GenomeWideNoOfRegions=plotStatistics(occupancyGenomeWide[[1]][[1]][[1]], TF, directory="img/statistics", plotFilename="BestSolutionAllAccessibleRegions", imageType=imgType, threshold=c(1.0,0.5),backgroundSignal,profile);
 }
 
-
+rownames(GenomeWideNoOfRegions)=format(as.numeric(rownames(GenomeWideNoOfRegions)),digits=2)
 
 
 ################################################################################
 # NUMBER OF DNA SEGMENTS WITH A CHIP-SEQ SIGNAL HIGHER THAN THE THRESHOLD
 ################################################################################
 tableCaption="\\emph{The number of DNA segments with a ChIP-seq signal higher than the threshold}. We considered two thresholds $K=1.0$ and $K=0.5$. The mean ChIP-seq signal of the $20\\ Kbp$ segment needs to be higher than $K\\times B$.";	
-tableLatex=xtable(GenomeWideNoOfRegions, label ="tab:GenomeWideNoOfRegions", caption =tableCaption,align="|l|r|r|r|r|r|", digit=c(0));
+tableLatex=xtable(GenomeWideNoOfRegions, label ="tab:GenomeWideNoOfRegions", caption =tableCaption,align="|r|r|r|r|r|r|", digit=c(0));
 print.xtable(tableLatex, sanitize.text.function = function(x) x,file="tables/GenomeWideNoOfRegions.tex",hline.after=-1:nrow(GenomeWideNoOfRegions),floating.environment="table");
 
 

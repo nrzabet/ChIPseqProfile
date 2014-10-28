@@ -7,25 +7,55 @@
 ### plotFilename="": the filename of the graph to be ploted
 ### imageType="pdf" a string that specifies the image type. Can be: eps or pdf
 ### contour=FALSE: a logical value indicating whether the contour should be drawn over the heatmap
-plotOccupancyModelQualityHeatmaps <-function(occupancy, TF, lambdas, boundMolecules, directory="", plotFilename="", imageType="pdf", contour=FALSE){
+plotOccupancyModelQualityHeatmaps <-function(occupancy, TF, lambdas, boundMolecules, directory="", plotFilename="", imageType="pdf", contour=FALSE, regionsThreshold=0.1){
 	
-	figLabels = c("A", "B", "C", "D", "E", "F","G","H", "I","J","K","L","M","N");
+	figLabels = c("A", "B", "C", "D", "E", "F","G","H", "I","J","K","L","M","N","O");
 	
-	
+    cbbPalette = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7");
+	cbPalette = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7");
+    
 	path="";
 	if(!is.null(directory) & nchar(directory) > 0){
 		path=paste(directory,"/", sep="");
 	}
 	
-	contourColor="darkolivegreen3";
+	contourColor="bisque2";
+
 	heatColors=rev(heat.colors(100));
 
 	xlabs=boundMolecules;
 	ylabs=lambdas;
-	
-	filename=paste("occupancyModelQualityHeatmap",plotFilename,".",sep="");
+
+	selectedColor="gray20";
+	optimumColor="darkolivegreen3";
 	
 
+
+
+    
+	filename=paste("occupancyModelQualityHeatmap",plotFilename,".",sep="");
+	
+    corrColor=cbbPalette[5];
+    mseColor=cbbPalette[3];
+    intersectionColor=cbbPalette[4];
+    selectedColor=cbbPalette[1];
+	optimumColor=cbPalette[7];
+    contourColor=cbPalette[2];
+    
+    corrColor=cbbPalette[7];
+    mseColor=cbbPalette[6];
+    intersectionColor=cbbPalette[8];
+    selectedColor=cbbPalette[1];
+	optimumColor=cbPalette[4];
+    contourColor=cbPalette[5];
+
+	colfunc=colorRampPalette(c("white", corrColor));
+	correlationColors=colfunc(100);
+	colfunc=colorRampPalette(c(mseColor,"white"));
+	MSEColors=colfunc(100);
+	colfunc=colorRampPalette(c(corrColor,mseColor));
+	bufferCols=colfunc(20);
+	regionsColors=c("white",corrColor,mseColor,intersectionColor);
 
 	if(length(TF)>1){
 		if(imageType=="pdf"){
@@ -65,8 +95,9 @@ plotOccupancyModelQualityHeatmaps <-function(occupancy, TF, lambdas, boundMolecu
 			}
 		}
 
-		image(1:length(xlabs),1:length(ylabs),t(meanCorrelation), axes = FALSE, main="", xlab="number of bound molecules", ylab=expression(lambda), zlim=c(0,1),col=heatColors);
-		title(main=bquote(rho[.(TF[TFid])]), cex.main = 2.0);
+		image(1:length(xlabs),1:length(ylabs),t(meanCorrelation), axes = FALSE, main="", xlab="number of bound molecules", ylab=expression(lambda),col=correlationColors);
+		#title(main=bquote(rho[.(TF[TFid])]), cex.main = 2.0);
+		title(main=paste("correlation (",TF[TFid],")",sep=""), cex.main = 1.6);
 
 		for(textXId in 1:length(xlabs)){
 			for(textYId in 1:length(ylabs)){
@@ -74,11 +105,11 @@ plotOccupancyModelQualityHeatmaps <-function(occupancy, TF, lambdas, boundMolecu
 			}	
 		}
 		if(contour){
-			contour(1:length(xlabs),1:length(ylabs), t(meanCorrelation), levels = seq(0, 1, by = 0.05), add = TRUE, col = contourColor, lwd=2, labcex = 1.0)
+			contour(1:length(xlabs),1:length(ylabs), t(meanCorrelation), levels = seq(0, 1, by = 0.05), add = TRUE, col = contourColor, lwd=1, labcex = 1.0)
 		}
 		axis(BELOW<-1, at=1:length(xlabs), labels=xlabs, cex.axis=0.7)
 		axis(LEFT <-2, at=1:length(ylabs), labels=ylabs, las= HORIZONTAL<-1,cex.axis=0.7)
-		mtext(figLabels[(TFid)], line = 0.5, adj =0, cex=2.0);  
+		mtext(figLabels[(TFid)], line = 0.7, adj =0, cex=1.6);  
 		
 	}
 
@@ -91,8 +122,9 @@ plotOccupancyModelQualityHeatmaps <-function(occupancy, TF, lambdas, boundMolecu
 			}
 		}
 		
-		image(1:length(xlabs),1:length(ylabs),t(log10(meanMSE)), axes = FALSE, main = "", xlab="number of bound molecules", ylab=expression(lambda),col=heatColors)
-		title(main=bquote(MSE[.(TF[TFid])]), cex.main = 2.0);
+		image(1:length(xlabs),1:length(ylabs),t(log10(meanMSE)), axes = FALSE, main = "", xlab="number of bound molecules", ylab=expression(lambda),col=MSEColors)
+		#title(main=bquote(MSE[.(TF[TFid])]), cex.main = 2.0);
+		title(main=paste("mean squared error (",TF[TFid],")",sep=""), cex.main = 1.6);
 
 		for(textXId in 1:length(xlabs)){
 			for(textYId in 1:length(ylabs)){
@@ -100,39 +132,67 @@ plotOccupancyModelQualityHeatmaps <-function(occupancy, TF, lambdas, boundMolecu
 			}	
 		}
 		if(contour){
-			contour(1:length(xlabs),1:length(ylabs), t(log10(meanMSE*1000)), add = TRUE, col = contourColor, lwd=2, labcex = 1.0)
+			contour(1:length(xlabs),1:length(ylabs), t(log10(meanMSE*1000)), add = TRUE, col = contourColor, lwd=1, labcex = 1.0)
 		}
 		axis(BELOW<-1, at=1:length(xlabs), labels=xlabs, cex.axis=0.7)
 		axis(LEFT <-2, at=1:length(ylabs), labels=ylabs, las= HORIZONTAL<-1,cex.axis=0.7)
-		mtext(figLabels[(TFid)+length(TF)], line = 0.5, adj =0, cex=2.0);  
-		
+		mtext(figLabels[(TFid)+length(TF)], line = 0.7, adj =0, cex=1.6);  
 	}
 	
 	#plot heatmaps for mean square error
 	for(TFid in 1:length(TF)){
 		
-		meanTheta=matrix(0,nrow=length(lambdas),ncol=length(boundMolecules));
+		meanCorrelation=matrix(0,nrow=length(lambdas),ncol=length(boundMolecules));
 		for(j in 1:length(lambdas)){
 			for(k in 1:length(boundMolecules)){
-				meanTheta[j,k] = occupancy[[j]][[k]]$meanTheta[[TF[TFid]]];
+				meanCorrelation[j,k] = occupancy[[j]][[k]]$meanCorrelation[[TF[TFid]]];
+			}
+		}
+
+		meanMSE=matrix(0,nrow=length(lambdas),ncol=length(boundMolecules));
+		for(j in 1:length(lambdas)){
+			for(k in 1:length(boundMolecules)){
+				meanMSE[j,k] = occupancy[[j]][[k]]$meanMSE[[TF[TFid]]];
 			}
 		}
 		
-		
-		image(1:length(xlabs),1:length(ylabs),t(meanTheta), axes = FALSE, main="", xlab="number of bound molecules", ylab=expression(lambda),col=heatColors);
-		title(main=bquote(theta[.(TF[TFid])]), cex.main = 2.0);
-		
-		for(textXId in 1:length(xlabs)){
-			for(textYId in 1:length(ylabs)){
-				text(textXId,textYId,format(meanTheta[textYId,textXId],digits=2,scientific=TRUE),cex=0.7);
-			}	
+		buffer=log10(as.vector(meanMSE));
+		thresholdMSE=10^(min(buffer)+regionsThreshold*(max(buffer)-min(buffer)))
+		buffer=(as.vector(meanCorrelation));
+		thresholdCorrelation=(min(buffer)+(1-regionsThreshold)*(max(buffer)-min(buffer)))
+
+
+		meanTheta=matrix(0,nrow=length(lambdas),ncol=length(boundMolecules));
+    
+		for(j in 1:length(lambdas)){
+			for(k in 1:length(boundMolecules)){
+				if(!is.na(meanCorrelation) & meanCorrelation[j,k]>=thresholdCorrelation){	
+					meanTheta[j,k] = meanTheta[j,k] + 1;
+				}
+				if(!is.na(meanMSE) & meanMSE[j,k]<=thresholdMSE){	
+					meanTheta[j,k] = meanTheta[j,k] + 2;
+				}
+
+			}
 		}
-		if(contour){
-			contour(1:length(xlabs),1:length(ylabs), t(meanTheta), add = TRUE, col = contourColor, lwd=2, labcex = 1.0)
-		}
+
+
+
+		#regionsColors=c("white","coral4","cadetblue4","darkorchid4");
+		#regionsColors=c("white",rev(heat.colors(3)));
+		image(1:length(xlabs),1:length(ylabs),t(meanTheta), axes = FALSE, main="", xlab="number of bound molecules", ylab=expression(lambda),col=regionsColors);
+		#title(main=bquote(theta[.(TF[TFid])]), cex.main = 2.0);
+		title(main=paste("optimal parameters (",TF[TFid],")",sep=""), cex.main = 1.6);
+
+		rectanglePoints=which(meanTheta==3, arr.ind = TRUE);
+	
+		rect(min(rectanglePoints[,2])-0.5,min(rectanglePoints[,1])-0.5,max(rectanglePoints[,2])+0.5,max(rectanglePoints[,1])+0.5, border=selectedColor, lwd=2);
+		rectanglePoints=which(meanMSE==min(meanMSE), arr.ind = TRUE);
+		rect(rectanglePoints[,2]-0.5,rectanglePoints[,1]-0.5,rectanglePoints[,2]+0.5,rectanglePoints[,1]+0.5, border=optimumColor, lwd=2);
+		
 		axis(BELOW<-1, at=1:length(xlabs), labels=xlabs, cex.axis=0.7)
 		axis(LEFT <-2, at=1:length(ylabs), labels=ylabs, las= HORIZONTAL<-1,cex.axis=0.7)
-		mtext(figLabels[(TFid)+2*length(TF)], line = 0.5, adj =0, cex=2.0);  
+		mtext(figLabels[(TFid)+2*length(TF)], line = 0.7, adj =0, cex=1.6);  
 	}
 	
 	dev.off();
@@ -175,6 +235,9 @@ plotStatistics <- function(occupancy, TF, directory="", plotFilename="", imageTy
 	colnames(regions)=TF
 	rownames(regions)=threshold
     
+	minMSE=NULL;
+	maxMSE=NULL;
+
 	for(i in 1:length(threshold)){	
 	       
 		# extract the locations with signal higher than a threshold
@@ -198,51 +261,114 @@ plotStatistics <- function(occupancy, TF, directory="", plotFilename="", imageTy
 		names(correlationLocal[[i]])=TF;
 		mseLocal[[i]]=vector("list", length(TF));
 		names(mseLocal[[i]])=TF;
-		thetaLocal[[i]]=vector("list", length(TF));
-		names(thetaLocal[[i]])=TF;
+#		thetaLocal[[i]]=vector("list", length(TF));
+#		names(thetaLocal[[i]])=TF;
 		
 		for(j in 1:length(TF)){
 			bufferCorrelation=c();
 			bufferMSE=c();
-			bufferTheta=c();
+#			bufferTheta=c();
 			for(k in locationsWithSignal[[i]][[j]]){
 				bufferCorrelation=c(bufferCorrelation,occupancy$correlation[[j]][k]);
 				bufferMSE=c(bufferMSE,occupancy$MSE[[j]][k]*1000);
-				bufferTheta=c(bufferTheta,occupancy$correlation[[j]][k]/(occupancy$MSE[[j]][k]*1000));
+#				bufferTheta=c(bufferTheta,occupancy$correlation[[j]][k]/(occupancy$MSE[[j]][k]*1000));
 			}	
 			correlationLocal[[i]][[j]]=bufferCorrelation;
 			mseLocal[[i]][[j]]=bufferMSE;
-			thetaLocal[[i]][[j]]=bufferTheta;
-            
+#			thetaLocal[[i]][[j]]=bufferTheta;
+            		if(is.null(minMSE)){
+				minMSE=min(bufferMSE);
+				maxMSE=max(bufferMSE);
+			} else{
+				if(minMSE > min(bufferMSE)){
+					minMSE=min(bufferMSE);
+				}
+				if(maxMSE < max(bufferMSE)){
+					maxMSE=max(bufferMSE);
+				}
+			}
 		}
 	}
 
-   
+
+	   
 	#plot the boxplots with the statistics
 	if(imageType=="pdf"){
 		pdf(paste(path,filename,imageType,sep=""), width=(9), height=(3*length(threshold)),pointsize = 10);
 	} else if(imageType=="eps"){
 		postscript(paste(path,filename,imageType,sep=""), width=(9), height=(3*length(threshold)),pointsize = 10);
 	}
-	par(mfrow=c(length(threshold),3));
+	par(mfrow=c(length(threshold),2));
 	
 	par(cex=0.9);
 
 	for(i in 1:length(threshold)){
-		boxplot(correlationLocal[[i]], main="", ylab="")
-		title(main=bquote(rho[.(threshold[i])]));
-		mtext(figLabels[(i-1)*3+1], line = 0.5, adj =0, cex=1.6);  
-		boxplot(mseLocal[[i]], main="", ylab="",log="y")
-		title(main=bquote(MSE[.(threshold[i])]));
-		mtext(figLabels[(i-1)*3+2], line = 0.5, adj =0, cex=1.6);  
-		boxplot(thetaLocal[[i]], main="", ylab="")
-		title(main=bquote(theta[.(threshold[i])]));
-		mtext(figLabels[(i-1)*3+3], line = 0.5, adj =0, cex=1.6);
+		boxplot(correlationLocal[[i]], main="", ylab="", ylim=c(-1,1));
+		title(main=paste("correlation (",threshold[i],")",sep=""));
+		mtext(figLabels[(i-1)*2+1], line = 0.5, adj =0, cex=1.6);  
+		boxplot(mseLocal[[i]], main="", ylab="",log="y", ylim=c(minMSE,maxMSE))
+		title(main=paste("mean squared error (",threshold[i],")",sep=""));
+		mtext(figLabels[(i-1)*2+2], line = 0.5, adj =0, cex=1.6);  
+
 	}
 	dev.off();
-	return(regions);
-}
 
+	filename=paste("OccupancyStatisticsPValue",plotFilename,".",sep="");
+	#plot the p-value for the statistics
+	if(length(threshold)==2){
+		if(imageType=="pdf"){
+			pdf(paste(path,filename,imageType,sep=""), width=(6), height=2.5,pointsize = 10);
+		} else if(imageType=="eps"){
+			postscript(paste(path,filename,imageType,sep=""), width=(6), height=2.5,pointsize = 10);
+		}
+		par(mfrow=c(1,1));
+		par(mar=c(4, 10, 3, 1)+0.1);
+		par(cex=0.9);
+
+		colfunc=colorRampPalette(c("darkolivegreen4","white"));
+		bufferColors=colfunc(10);
+		ksColors=c(rep(bufferColors[1], times=35),rep(bufferColors[3], times=11),rep(bufferColors[10], times=4));
+		ks.pvalue=matrix(0, nrow=2, ncol=length(TF));
+		colnames(ks.pvalue)=TF;
+		rownames(ks.pvalue)=c("correlation","mean squared error");
+		for(j in 1:length(TF)){
+			ks.pvalue[1,j]=ks.test(correlationLocal[[1]][[j]],correlationLocal[[2]][[j]])$p.value
+			ks.pvalue[2,j]=ks.test(mseLocal[[1]][[j]],mseLocal[[2]][[j]])$p.value
+		}
+		
+		ks.pvalue.binary=ks.pvalue;
+		for(i in 1:nrow(ks.pvalue.binary)){
+			for(j in 1:ncol(ks.pvalue.binary)){
+				if(ks.pvalue.binary[i,j]==0.0){
+					ks.pvalue.binary[i,j]=2e-16;
+				} 
+			}
+		}
+
+		print(log10(ks.pvalue.binary));		
+
+
+		image(1:ncol(ks.pvalue),1:nrow(ks.pvalue),t(log10(ks.pvalue.binary)), axes = FALSE, main = "Kolmogorov-Smirnov test p-value", xlab="", ylab="",col=ksColors, zlim=c(-16,0));
+		for(text.x.id in 1:nrow(ks.pvalue)){
+			for(text.y.id in 1:ncol(ks.pvalue)){
+				local.text=format(signif(t(ks.pvalue)[text.y.id,text.x.id],digits=2) , scientific = TRUE);
+				text(text.y.id,text.x.id,local.text);
+			}	
+		}
+	
+		axis(BELOW<-1, at=1:ncol(ks.pvalue), labels=TF, cex.axis=1.0)
+		axis(LEFT <-2, at=1:nrow(ks.pvalue), labels=rownames(ks.pvalue), las= HORIZONTAL<-1,cex.axis=1.0)
+	
+
+		dev.off();
+	}
+
+	return(regions);
+
+
+signif(ks.test(count_genes_cleavage_sites,count_LTR_cleavage_sites)$p.value,digits=2)
+
+}
 
 
 
@@ -269,12 +395,28 @@ plotStatistics <- function(occupancy, TF, directory="", plotFilename="", imageTy
 ### stepSize=NULL. An integer indicating the step size of the landscape. 
 plotOccupancyProfile <-function(occupancy, PWMScore, lambda, maxPWMScore, DNAAccessibility=NULL, directory="", plotFilename="", profile=NULL, imageType="pdf", setSequence=NULL,TF="", boundMolecules=NULL, outputPWMScore=TRUE, outputOccupancyAbundance=TRUE, geneRef=NULL,stepSize=NULL){
 	
+    
+    cbbPalette = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7");
+	cbPalette = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7");
+    
+
 	# colors
 	colAccessibility=rgb(255,228,196,255,maxColorValue=255);
 	colPWM=rgb(110,139,61,255,maxColorValue=255);
-	colChIP=rgb(131,139,139,255,maxColorValue=255);
+	colPWM=rgb(0,0,205,255,maxColorValue=255);
+	colPWM=rgb(83,134,139,255,maxColorValue=255);
+	colChIP=rgb(151,159,159,255,maxColorValue=255);
 	colModel=rgb(139,62,47,255,maxColorValue=255);
-	
+
+    colAccessibility=cbPalette[5];
+    colPWM=cbPalette[6];
+    colChIP=cbPalette[1];
+    colModel=cbPalette[7];
+    colGene=cbPalette[4];
+    colEnhancer=cbPalette[8];
+   
+    
+
 	if(!is.null(setSequence)){
 		
 		#se the path to the destination directory
@@ -314,8 +456,10 @@ plotOccupancyProfile <-function(occupancy, PWMScore, lambda, maxPWMScore, DNAAcc
 				enhancerList=NULL;
 				if(!is.null(geneRef)) {
 					if(length(which(names(geneRef)=="exon"))>0){
-						ids = intersect(intersect(which(start(ranges(geneRef$exon))<endPosition), which(end(ranges(geneRef$exon))>=startPositon)), which(as.vector(seqnames(geneRef$exon))==chr));	
-						geneList = list("location"=geneRef$exon[ids],"name"=names(geneRef$exon[ids]));
+						idsExons = intersect(intersect(which(start(ranges(geneRef$exon))<endPosition), which(end(ranges(geneRef$exon))>=startPositon)), which(as.vector(seqnames(geneRef$exon))==chr));
+						ids5UTR = intersect(intersect(which(start(ranges(geneRef[["5UTR"]]))<endPosition), which(end(ranges(geneRef[["5UTR"]]))>=startPositon)), which(as.vector(seqnames(geneRef[["5UTR"]]))==chr));
+						ids3UTR = intersect(intersect(which(start(ranges(geneRef[["3UTR"]]))<endPosition), which(end(ranges(geneRef[["3UTR"]]))>=startPositon)), which(as.vector(seqnames(geneRef[["3UTR"]]))==chr));
+						geneList = list("location"=c(geneRef$exon[idsExons],geneRef[["5UTR"]][ids5UTR],geneRef[["3UTR"]][ids3UTR]),"name"=c(names(geneRef$exon[idsExons]),names(geneRef[["5UTR"]][ids5UTR]),names(geneRef[["3UTR"]][ids3UTR]) ));
 					}
 					if(length(which(names(geneRef)=="enhancer"))>0){
 						ids = intersect(intersect(which(start(ranges(geneRef$enhancer))<endPosition), which(end(ranges(geneRef$enhancer))>=startPositon)), which(as.vector(seqnames(geneRef$enhancer))==chr));	
@@ -395,15 +539,15 @@ plotOccupancyProfile <-function(occupancy, PWMScore, lambda, maxPWMScore, DNAAcc
 				
 					if(outputPWMScore){					
 						PWMScoreNorm=PWMScore[[grID]];
-						PWMScoreNorm = (exp((1/lambda)*PWMScoreNorm))/(exp((1/lambda)*maxPWMScore));
-						indexesAll=which(PWMScoreNorm>0.01);
-						lines(positions[indexesAll], PWMScoreNorm[indexesAll], type="h", col=colPWM, lty=1, lwd=1.0, pch=1);
+						#PWMScoreNorm = (exp((1/lambda)*PWMScoreNorm))/(exp((1/lambda)*maxPWMScore));
+						indexesAll=which(PWMScoreNorm>0.05);
+						lines(positions[indexesAll], PWMScoreNorm[indexesAll], type="h", col=colPWM, lty=1, lwd=1.5, pch=1);
 					}
 				
 					if(!is.null(profile[[grID]])){
 						statTxt = paste("correlation = ",signif(cor(profile[[grID]],modelProfile),2), sep="");	
-						statTxt = paste(statTxt, "; MSE = ",signif(1000*sum((profile[[grID]]-modelProfile)^2) / length(profile[[grID]]),3), sep="");
-						statTxt=bquote(rho[.(TF)] ~ " = " ~ .(signif(cor(profile[[grID]],modelProfile),2)) ~ "; "~ MSE[.(TF)] ~ " = " ~ .(signif(1000*sum((profile[[grID]]-modelProfile)^2) / length(profile[[grID]]),3)));
+						statTxt = paste(statTxt, "; mean squared error = ",signif(1000*sum((profile[[grID]]-modelProfile)^2) / length(profile[[grID]]),3), sep="");
+						#statTxt=bquote(rho[.(TF)] ~ " = " ~ .(signif(cor(profile[[grID]],modelProfile),2)) ~ "; "~ MSE[.(TF)] ~ " = " ~ .(signif(1000*sum((profile[[grID]]-modelProfile)^2) / length(profile[[grID]]),3)));
 	
 						mtext(statTxt, line = -1.5, adj =0.99, cex=1.0); 
 						mtext(chr, line = -1.5, adj =0.01, cex=1.0);  
@@ -427,9 +571,9 @@ plotOccupancyProfile <-function(occupancy, PWMScore, lambda, maxPWMScore, DNAAcc
 								}
 								exonYEnd=exonYStart+0.10;
 								
-								rect(exonXStart, exonYStart, exonXEnd, exonYEnd, col = "cadetblue4", border = "cadetblue4",lwd = 0);
+								rect(exonXStart, exonYStart, exonXEnd, exonYEnd, col = colGene, border = colGene,lwd = 0);
 								if(lastExonXend >= 0){
-									lines(c(lastExonXend,exonXStart),c(lastExonYmed,((exonYStart + exonYEnd)/2)), col = "cadetblue4",lty=1, lwd=1);
+									lines(c(lastExonXend,exonXStart),c(lastExonYmed,((exonYStart + exonYEnd)/2)), col = colGene,lty=1, lwd=1);
 								} else{
 									firstExonXStart=exonXStart;
 								}
@@ -465,9 +609,9 @@ plotOccupancyProfile <-function(occupancy, PWMScore, lambda, maxPWMScore, DNAAcc
 								enhancerYStart=-0.39;
 								enhancerYEnd=enhancerYStart+0.10;
 								
-								rect(enhancerXStart, enhancerYStart, enhancerXEnd, enhancerYEnd, col = "darkorchid3", border = "darkorchid3",lwd = 0);
+								rect(enhancerXStart, enhancerYStart, enhancerXEnd, enhancerYEnd, col = colEnhancer, border = colEnhancer,lwd = 0);
 								if(lastEnhancerXend >= 0){
-									lines(c(lastEnhancerXend,enhancerXStart),c(lastEnhancerYmed,((enhancerYStart + enhancerYEnd)/2)), col = "darkorchid3",lty=1, lwd=1);
+									lines(c(lastEnhancerXend,enhancerXStart),c(lastEnhancerYmed,((enhancerYStart + enhancerYEnd)/2)), col = colEnhancer,lty=1, lwd=1);
 								} else{
 									firstEnhancerXStart=enhancerXStart;
 								}
